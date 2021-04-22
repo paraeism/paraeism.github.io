@@ -1,0 +1,161 @@
+from tkinter import *
+import math as m
+
+root = Tk()
+root.geometry("500x500")
+root.title("ABGA calculator")
+
+mainlbl = Label(root, text = "ABGA calculator")
+mainlbl.place(x = 10, y = 10)
+
+def reset_cmd() :
+    global phentry, pco2entry, hco3entry, agapentry
+    phentry.delete(0, END)
+    pco2entry.delete(0, END)
+    hco3entry.delete(0, END)
+    agapentry.delete(0, END)
+
+def abga_calc(ph, pco2, hco3, agap) :
+    res = ""
+    expectedpco2 = 0
+    eph = 6.1 + m.log10(hco3 / (pco2 * 0.0301))
+    ehco3 = m.pow(10, (ph - 6.1)) * 0.0301 * pco2
+    eco2 = hco3 / (0.0301 * m.pow(10, (ph - 6.1)))
+
+    #primary metabolic disorders
+    if ph < 7.36 and pco2 <= 40 :
+        res += "Primary metabolic acidosis"
+        expectedpco2 = 1.5 * hco3 + 8
+        if agap <= 16 :
+            res += ", with normal anion gap"
+        else :
+            res += ", with increased anion gap"
+            if agap + hco3 - 36 > 7 :
+                res += ",\nmixed with a metabolic alkalosis"
+            elif agap + hco3 - 36 < -7 :
+                res += ",\nmixed with a normal-gap metabolic acidosis"
+    if ph > 7.44 and pco2 >= 40 :
+        res += "Primary metabolic alkalosis"
+        expectedpco2 = 0.7 * hco3 + 21
+    if pco2 > (expectedpco2 + 2) :
+        res += ",\nwith superimposed respiratory acidosis"
+    elif pco2 < (expectedpco2 - 2) :
+        res += ",\nwith superimposed respiratory alkalosis"
+    else :
+        res += ",\nwith full respiratory compensation"
+
+    if ph < 7.4 and pco2 > 44 : #primary respiratory disorders
+        res += "Primary respiratory acidosis"
+        ph_high = 7.4 - (0.003 * (pco2 - 40))
+        ph_low = 7.4 - (0.008 * (pco2 - 40))
+        hco3_high = 24 + (0.35 * (pco2 - 40))
+        hco3_low = 24 + (0.1 * (pco2 - 40))
+
+        if ph <= ph_low + 0.02 :
+            res = "Acute (uncompensated) " + res
+            if hco3 < (hco3_low - 2) :
+                res += ",\nwith metabolic acidosis"
+                if agap <= 16 :
+                    res += ", with normal anion gap"
+                else :
+                    res += ", with increased anion gap"
+        elif ph >= ph_high - 0.02 :
+            res = "Chronic (compensated) " + res
+            if hco3 > (hco3_high + 2) :
+                res += ",\nwith metabolic alkalosis"
+        if ph > (ph_low + 0.02) and ph < ph_high - 0.02 :
+            res = "(1) partially compensated primary respiratory acidosis, or\n" +\
+			      "(2) acute superimposed on chronic " + res + ", or\n" +\
+			      "(3) mixed acute respiratory acidosis with a small metabolic alkalosis"
+
+    if ph > 7.4 and pco2 < 36 :
+        res = "Primary respiratory alkalosis"
+        ph_low = 7.4 + (0.0017 * (40 - pco2))
+        ph_high = 7.4 + (0.008 * (40 - pco2))
+        hco3_low = 24 - (0.5 * (40 - pco2))
+        hco3_high = 24 - (0.25 * (40 - pco2))
+
+        if ph <= ph_low + 0.02 :
+            res = "Chronic (compensated) " + res
+            if hco3 < hco3_low - 2 :
+                res += ",\nwith metabolic acidosis"
+                if agap <= 16 :
+                    res += ", with normal anion gap"
+                else :
+                    res += ", with increased anion gap"
+        elif ph >= ph_high - 0.02 :
+            res = "Acute (uncompensated) " + res
+            if hco3 > (hco3_high + 2) :
+                res += ",\nwith metabolic alkalosis"
+        else :
+            res =  "(1) partially compensated primary respiratory alkalosis, or\n" +\
+			       "(2) acute superimposed on chronic " + res + ", or\n" +\
+			       "(3) mixed acute respiratory alkalosis with a small metabolic acidosis"
+    #mixed acid base disorders
+    if res == "" or len(res) == 0 :
+        if ph >= 7.36 and ph <= 7.44 :
+            if pco2 > 40 and hco3 > 26 :
+                res = "Mixed respiratory acidosis / metabolic alkalosis"
+                expectedpco2 = 0.7 * hco3 + 21
+            elif pco2 < 40 and hco3 < 22 :
+                res = "Mixed respiratory alkalosis / metabolic acidosis"
+                expectedpco2 = 1.5 * hco3 + 8
+                if agap <= 16 :
+                    res += ", with normal anion gap"
+                else :
+                    res += ", with increased anion gap"
+            else :
+                if agap > 16 :
+                    res = "Mixed metabolic alkalosis / metabolic acidosis, with increased anion gap"
+    if res == "" or len(res) == 0 :
+        res = "Normal ABG"
+    return res
+
+def calc_cmd() :
+    global result, phentry, pco2entry, hco3entry, agapentry
+    try :
+        ph = float(phentry.get())
+        pco2 = float(pco2entry.get())
+        hco3 = float(hco3entry.get())
+        agap = float(agapentry.get())
+        # print(abga_calc(ph, pco2, hco3, agap))
+        result.configure(text = abga_calc(ph, pco2, hco3, agap))
+    except :
+        result.configure(text = "Please insert numbers")
+
+
+ex, ey = 10, 40
+phlbl = Label(root, text = "pH : ")
+phlbl.place(x = ex, y = ey)
+phentry = Entry(root)
+phentry.place(x = ex + 80, y = ey)
+pco2lbl = Label(root, text = "P_CO2 : ")
+pco2lbl.place(x = ex, y = ey + 30)
+pco2entry = Entry(root)
+pco2entry.place(x = ex + 80, y = ey + 30)
+hco3lbl = Label(root, text = "HCO3 : ")
+hco3lbl.place(x = ex, y = ey + 60)
+hco3entry = Entry(root)
+hco3entry.place(x = ex + 80, y = ey + 60)
+agaplbl = Label(root, text = "Base Excess : ")
+agaplbl.place(x = ex, y = ey + 90)
+
+agapentry = Entry(root)
+agapentry.place(x = ex + 80, y = ey + 90)
+
+cx, cy = ex, ey + 120
+
+#resultframe = LabelFrame(root, text = "Result", width = 300, height = 150)
+#resultframe.place(x = cx, y = cy + 30)
+result = Label(root, text = "Please insert all fields")
+result.place(x = cx + 10, y = cy + 55)
+
+calcbtn = Button(root, text = "calc", relief = "ridge", \
+    command = lambda : calc_cmd(), bg = "#AAAAFF")
+calcbtn.place(x = cx, y = cy)
+resetbtn = Button(root, text = "reset", relief = "ridge", \
+    command = lambda : reset_cmd(), bg = "#AAAAFF")
+resetbtn.place(x = cx + 50, y = cy)
+
+
+root.mainloop()
